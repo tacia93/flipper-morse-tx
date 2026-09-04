@@ -149,6 +149,9 @@ elapsed ms: 4873      marcstate: 0x13 (TX)
 stava effettivamente irradiando. I 4873 ms misurati corrispondono ai 162 unità × 30 ms
 (= 4860 ms) previsti dallo standard PARIS per quel messaggio a 40 WPM: 0,3% di scarto.
 
+Il segnale è stato inoltre **ricevuto e verificato con un ricevitore OOK esterno**: la
+trasmissione esce davvero in aria ed è decodificabile.
+
 ## Timing
 
 Con unità `T = 1200 ms / WPM`:
