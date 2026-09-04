@@ -1,0 +1,13 @@
+App(
+    appid="morse_tx",
+    name="Morse TX",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="morse_tx_app",
+    requires=["gui", "notification"],
+    stack_size=4 * 1024,
+    fap_category="Sub-GHz",
+    fap_description="Sends text messages in Morse code by keying an OOK carrier on the external CC1101 module.",
+    fap_author="Emanuele Colucci",
+    fap_version=(1, 0),
+    sources=["*.c"],
+)
