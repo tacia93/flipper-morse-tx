@@ -37,6 +37,7 @@
 #include <storage/storage.h>
 #include <toolbox/level_duration.h>
 
+#include <lib/flipper_format/flipper_format.h>
 #include <lib/subghz/devices/devices.h>
 
 /* Device names from the sub-ghz device registry. */
@@ -47,6 +48,10 @@
 #define MORSE_TX_REPORT_DIR  EXT_PATH("apps_data/morse_tx")
 #define MORSE_TX_REPORT_FILE EXT_PATH("apps_data/morse_tx/radio_check.txt")
 #define MORSE_TX_TXLOG_FILE  EXT_PATH("apps_data/morse_tx/last_tx.txt")
+
+#define MORSE_TX_CONFIG_FILE    EXT_PATH("apps_data/morse_tx/morse_tx.conf")
+#define MORSE_TX_CONFIG_HEADER  "Morse TX settings"
+#define MORSE_TX_CONFIG_VERSION 1
 
 #define MORSE_TX_TICK_PERIOD_MS  20
 #define MORSE_TX_SIDETONE_HZ     700.0f
@@ -356,6 +361,101 @@ static void morse_tx_save_file(const char* path, const char* text) {
 
 static void morse_tx_save_report(const char* text) {
     morse_tx_save_file(MORSE_TX_REPORT_FILE, text);
+}
+
+/* ------------------------------------------------------------- settings io */
+
+/* Settings are stored by value, not by index, so reordering the lists in a
+   later version cannot silently change what a saved file means. */
+
+static uint8_t
+    morse_tx_index_of_u32(const uint32_t* list, size_t count, uint32_t value, uint8_t fallback) {
+    for(size_t i = 0; i < count; i++) {
+        if(list[i] == value) return (uint8_t)i;
+    }
+    return fallback;
+}
+
+static uint8_t
+    morse_tx_index_of_u8(const uint8_t* list, size_t count, uint32_t value, uint8_t fallback) {
+    for(size_t i = 0; i < count; i++) {
+        if(list[i] == value) return (uint8_t)i;
+    }
+    return fallback;
+}
+
+static bool morse_tx_settings_load(MorseTxApp* app) {
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FlipperFormat* file = flipper_format_file_alloc(storage);
+    FuriString* header = furi_string_alloc();
+    FuriString* message = furi_string_alloc();
+    uint32_t version = 0;
+    uint32_t value = 0;
+    bool loaded = false;
+
+    do {
+        if(!flipper_format_file_open_existing(file, MORSE_TX_CONFIG_FILE)) break;
+        if(!flipper_format_read_header(file, header, &version)) break;
+        if(furi_string_cmp_str(header, MORSE_TX_CONFIG_HEADER) != 0) break;
+        if(version != MORSE_TX_CONFIG_VERSION) break;
+
+        /* keys are read in the order they are written */
+        if(flipper_format_read_string(file, "Message", message)) {
+            strncpy(app->message, furi_string_get_cstr(message), MORSE_MESSAGE_MAX);
+            app->message[MORSE_MESSAGE_MAX] = '\0';
+        }
+        if(flipper_format_read_uint32(file, "Frequency", &value, 1)) {
+            app->freq_index = morse_tx_index_of_u32(
+                morse_tx_frequencies, COUNT_OF(morse_tx_frequencies), value, app->freq_index);
+        }
+        if(flipper_format_read_uint32(file, "Speed", &value, 1)) {
+            app->speed_index = morse_tx_index_of_u8(
+                morse_tx_speeds, COUNT_OF(morse_tx_speeds), value, app->speed_index);
+        }
+        if(flipper_format_read_uint32(file, "Repeat", &value, 1)) {
+            app->repeat_index = morse_tx_index_of_u8(
+                morse_tx_repeats, COUNT_OF(morse_tx_repeats), value, app->repeat_index);
+        }
+        if(flipper_format_read_uint32(file, "Module", &value, 1)) {
+            app->module_index = (value < COUNT_OF(morse_tx_module_names)) ? (uint8_t)value : 0;
+        }
+        if(flipper_format_read_uint32(file, "Power5v", &value, 1)) app->power_5v = value != 0;
+        if(flipper_format_read_uint32(file, "Sidetone", &value, 1)) app->sidetone = value != 0;
+        loaded = true;
+    } while(false);
+
+    furi_string_free(message);
+    furi_string_free(header);
+    flipper_format_free(file);
+    furi_record_close(RECORD_STORAGE);
+    return loaded;
+}
+
+static void morse_tx_settings_save(MorseTxApp* app) {
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    storage_common_mkdir(storage, MORSE_TX_REPORT_DIR);
+    FlipperFormat* file = flipper_format_file_alloc(storage);
+
+    if(flipper_format_file_open_always(file, MORSE_TX_CONFIG_FILE)) {
+        uint32_t value;
+        flipper_format_write_header_cstr(file, MORSE_TX_CONFIG_HEADER, MORSE_TX_CONFIG_VERSION);
+        flipper_format_write_string_cstr(file, "Message", app->message);
+        value = morse_tx_frequencies[app->freq_index];
+        flipper_format_write_uint32(file, "Frequency", &value, 1);
+        value = morse_tx_speeds[app->speed_index];
+        flipper_format_write_uint32(file, "Speed", &value, 1);
+        value = morse_tx_repeats[app->repeat_index];
+        flipper_format_write_uint32(file, "Repeat", &value, 1);
+        value = app->module_index;
+        flipper_format_write_uint32(file, "Module", &value, 1);
+        value = app->power_5v ? 1 : 0;
+        flipper_format_write_uint32(file, "Power5v", &value, 1);
+        value = app->sidetone ? 1 : 0;
+        flipper_format_write_uint32(file, "Sidetone", &value, 1);
+    }
+
+    flipper_format_free(file);
+    furi_record_close(RECORD_STORAGE);
 }
 
 static bool morse_tx_external_present(void) {
@@ -1091,8 +1191,12 @@ static MorseTxApp* morse_tx_app_alloc(void) {
     app->repeat_index = 0; /* send once */
     app->power_5v = true;
     app->sidetone = true;
-    /* prefer the external module, fall back to the built-in radio */
-    app->module_index = morse_tx_external_present() ? 0 : 1;
+
+    /* A saved choice wins; without one, prefer the external module and fall
+       back to the built-in radio. */
+    if(!morse_tx_settings_load(app)) {
+        app->module_index = morse_tx_external_present() ? 0 : 1;
+    }
 
     app->gui = furi_record_open(RECORD_GUI);
     app->notifications = furi_record_open(RECORD_NOTIFICATION);
@@ -1180,6 +1284,7 @@ static MorseTxApp* morse_tx_app_alloc(void) {
 
 static void morse_tx_app_free(MorseTxApp* app) {
     morse_tx_stop(app);
+    morse_tx_settings_save(app);
     subghz_devices_deinit();
 
     view_dispatcher_remove_view(app->view_dispatcher, MorseTxViewMenu);

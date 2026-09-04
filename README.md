@@ -78,10 +78,12 @@ alimentato a 5V risulta quindi assente finché il Flipper è attaccato al PC. Pe
 scollega l'USB, oppure alimenta il modulo dal 3V3 (pin 9). L'app rileva questa condizione
 e lo dice esplicitamente invece di limitarsi a "modulo non rilevato".
 
-All'avvio l'app cerca il modulo esterno (`subghz_devices_is_connect()`, con 5V acceso
-momentaneamente per la sonda) e imposta `Module` di conseguenza: **External** se c'è,
-altrimenti **Internal**, così funziona anche senza modulo. La scelta resta modificabile
-a mano in Settings.
+**Solo alla prima esecuzione** (cioè finché non esiste un file di impostazioni salvate)
+l'app cerca il modulo esterno, con i 5V accesi momentaneamente per la sonda, e imposta
+`Module` di conseguenza: **External** se c'è, altrimenti **Internal**, così funziona anche
+senza modulo. Dalla volta dopo vale la scelta salvata, che è una decisione esplicita
+dell'utente e non va sovrascritta da una sonda; per ri-rilevare c'è **Radio check**, che
+aggiorna anche l'impostazione.
 
 Nota sul driver: `subghz_devices_begin()` va **sempre** chiuso con `subghz_devices_end()`,
 anche quando fallisce, altrimenti il tentativo successivo va in assert.
@@ -126,6 +128,12 @@ Impostazioni:
 | Module | External / Internal | preselezionato all'avvio in base a cosa è collegato |
 | 5V on GPIO | ON / OFF | alimentazione OTG per il modulo esterno |
 | Sidetone | ON / OFF | tono di monitoraggio a 700 Hz dallo speaker |
+
+Le impostazioni e il messaggio vengono **salvati all'uscita** in
+`/ext/apps_data/morse_tx/morse_tx.conf` (formato FlipperFormat, leggibile e modificabile a
+mano) e rilette all'avvio successivo. I valori sono salvati per valore e non per indice,
+così riordinare le liste in una versione futura non cambia in silenzio il significato di un
+file già salvato; un valore non più presente in lista ricade sul default.
 
 Durante la TX lo schermo mostra frequenza, velocità, indicatore `AIR`, il messaggio con il
 carattere in corso evidenziato, i punti/linee del carattere, la barra di avanzamento e il
