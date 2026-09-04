@@ -170,6 +170,14 @@ sub-GHz si aspetta livelli strettamente alternati, quindi la pausa esistente vie
   e non al cursore dell'encoder.
 - Preset radio: `FuriHalSubGhzPresetOok650Async`.
 
+## Licenza
+
+**GNU General Public License v3.0 o successiva** ([LICENSE](LICENSE)).
+
+Il programma deve restare open source: chi lo ridistribuisce, modificato o no, deve
+distribuirlo sotto la stessa licenza e rendere disponibile il codice sorgente. È la stessa
+licenza del firmware del Flipper Zero.
+
 ## Nota legale
 
 L'app emette una portante reale. Frequenza, potenza, duty cycle e necessità di licenza

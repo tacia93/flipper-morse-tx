@@ -1,3 +1,15 @@
+/*
+ * Morse TX - send text in Morse code from a Flipper Zero.
+ * Copyright (C) 2026 Emanuele Colucci
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version. It is distributed WITHOUT ANY WARRANTY; see the GNU
+ * General Public License in the LICENSE file for details.
+ */
 /**
  * Morse TX - keys a CW/OOK carrier on the Flipper Zero external CC1101 module.
  *
@@ -216,11 +228,6 @@ static bool morse_tx_probe_begin_result(void) {
 }
 
 /**
- * Talk to the CC1101 on the external header without going through the driver:
- * status registers are read with the burst bit set (addr | 0xC0), and the chip
- * pulls MISO low once it is ready to answer.
- */
-/**
  * Give the chip select a clean falling edge before talking to the module.
  * Straight after a failed driver init the line can be left asserted, and the
  * CC1101 then ignores the next transaction: releasing CS to input and driving
@@ -235,6 +242,11 @@ static void morse_tx_cs_wakeup(void) {
     furi_delay_us(100);
 }
 
+/**
+ * Talk to the CC1101 on the external header without going through the driver:
+ * status registers are read with the burst bit set (addr | 0xC0), and the chip
+ * pulls MISO low once it is ready to answer.
+ */
 static bool morse_tx_raw_probe_cs(const GpioPin* cs, uint8_t* partnum, uint8_t* version) {
     const FuriHalSpiBusHandle* handle = &furi_hal_spi_bus_handle_external;
     uint8_t tx[2] = {0};

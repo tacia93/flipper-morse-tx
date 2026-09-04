@@ -1,3 +1,15 @@
+/*
+ * Morse TX - send text in Morse code from a Flipper Zero.
+ * Copyright (C) 2026 Emanuele Colucci
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version. It is distributed WITHOUT ANY WARRANTY; see the GNU
+ * General Public License in the LICENSE file for details.
+ */
 #include "morse.h"
 
 #include <furi.h>
